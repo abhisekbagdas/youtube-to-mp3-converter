@@ -16,37 +16,29 @@
 <body>
     <h1>YouTube to MP3 Converter</h1>
     <input type="text" id="urlInput" placeholder="Enter YouTube URL">
-    <button onclick="selectDownloadPath()">Select Download Location</button>
-    <div id="pathDisplay">No path selected (will use default)</div>
+    <input type="text" id="pathInput" placeholder="Download path (e.g. D:\Downloads) - leave empty for default">
     <button onclick="convertVideo()">Convert</button>
     <div id="status"></div>
 
     <script>
-        let selectedPath = null;
-
-        function selectDownloadPath() {
-            // Create a hidden file input to trigger system file picker
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.webkitdirectory = true; // Allow directory selection
-            input.directory = true;
-            input.multiple = false;
-            
-            input.onchange = function(e) {
-                if (e.target.files && e.target.files.length > 0) {
-                    // Get the path from the first file
-                    const file = e.target.files;
-                    const path = file.webkitRelativePath.split('/');
-                    selectedPath = path;
-                    document.getElementById('pathDisplay').textContent = `Selected: ${selectedPath}`;
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
                 }
-            };
-            
-            input.click();
+            }
+            return cookieValue;
         }
 
         function convertVideo() {
             const url = document.getElementById('urlInput').value;
+            const selectedPath = document.getElementById('pathInput').value.trim() || null;
             const statusDiv = document.getElementById('status');
             
             if (!url) {
@@ -58,9 +50,12 @@
             statusDiv.textContent = 'Converting...';
             statusDiv.className = '';
             
-            fetch('/convert', {
+            fetch('/convert/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
                 body: JSON.stringify({ 
                     url: url,
                     download_path: selectedPath
@@ -73,7 +68,7 @@
                 return response.json();
             })
             .then(data => {
-                if (data.status === 'success') {
+                if (data.status === 'success' || data.status === 'processing') {
                     statusDiv.textContent = data.message;
                     statusDiv.className = 'success';
                 } else {
@@ -89,3 +84,4 @@
     </script>
 </body>
 </html>
+
