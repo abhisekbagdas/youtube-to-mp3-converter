@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube to MP3 Converter</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 50px auto; }
+        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; margin-right: 10px; }
+        button:hover { background: #0056b3; }
+        #status { margin-top: 20px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .success { color: green; }
+        .error { color: red; }
+        #pathDisplay { margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>YouTube to MP3 Converter</h1>
+    <input type="text" id="urlInput" placeholder="Enter YouTube URL">
+    <button onclick="selectDownloadPath()">Select Download Location</button>
+    <div id="pathDisplay">No path selected (will use default)</div>
+    <button onclick="convertVideo()">Convert</button>
+    <div id="status"></div>
+
+    <script>
+        let selectedPath = null;
+
+        function selectDownloadPath() {
+            // Create a hidden file input to trigger system file picker
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.webkitdirectory = true; // Allow directory selection
+            input.directory = true;
+            input.multiple = false;
+            
+            input.onchange = function(e) {
+                if (e.target.files && e.target.files.length > 0) {
+                    // Get the path from the first file
+                    const file = e.target.files;
+                    const path = file.webkitRelativePath.split('/');
+                    selectedPath = path;
+                    document.getElementById('pathDisplay').textContent = `Selected: ${selectedPath}`;
+                }
+            };
+            
+            input.click();
+        }
+
+        function convertVideo() {
+            const url = document.getElementById('urlInput').value;
+            const statusDiv = document.getElementById('status');
+            
+            if (!url) {
+                statusDiv.textContent = 'Please enter a URL';
+                statusDiv.className = 'error';
+                return;
+            }
+            
+            statusDiv.textContent = 'Converting...';
+            statusDiv.className = '';
+            
+            fetch('/convert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    url: url,
+                    download_path: selectedPath
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    statusDiv.textContent = data.message;
+                    statusDiv.className = 'success';
+                } else {
+                    statusDiv.textContent = 'Error: ' + data.message;
+                    statusDiv.className = 'error';
+                }
+            })
+            .catch(error => {
+                statusDiv.textContent = 'Error: ' + error;
+                statusDiv.className = 'error';
+            });
+        }
+    </script>
+</body>
+</html>
